@@ -18,7 +18,7 @@ jobs:
           # rebase. Default is merge.
           merge_method: squash
           # Time zone to use. Default is UTC.
-          time_zone: 'Asia/Kolkata'
+          time_zone: 'Europe/Berlin'
           # Require all pull request statuses to be successful before
           # merging. Default is `false`.
           require_statuses_success: 'true'
