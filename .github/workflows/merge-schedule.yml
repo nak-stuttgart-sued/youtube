@@ -6,10 +6,7 @@ on:
       - opened
       - edited
       - synchronize
-  issue_comment:
-    types: 
-      - created
-      - deleted
+  workflow_dispatch:
   schedule:
     - cron: '0 * * * *'
 jobs:
