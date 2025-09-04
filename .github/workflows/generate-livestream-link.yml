@@ -1,0 +1,66 @@
+name: Create YouTube Live Stream Link & Update Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      schedule:
+        description: 'Schedule in "YYYY-MM-DD HH:MM" (Europe/Berlin)'
+        required: true
+        default: ""
+      title:
+        description: "Title displayed in the Youtube Video"
+        required: false
+#   schedule:
+#     - cron: "0 9 * * *" # optional: run daily at 09:00 UTC; adjust or remove
+
+jobs:
+  create-livestream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install Dependencies
+        working-directory: ./automation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create YT Livestream
+        working-directory: ./automation
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          LOG_LEVEL: INFO
+          SCHEDULE: ${{ github.event.inputs.schedule || '' }}
+          TITLE: ${{ github.event.inputs.title || 'NAK Stuttgart-Süd - Gottesdienst am ' }}
+        run: |
+          python3 ./create_youtube_live.py
+
+      - name: Commit and push updated index.html
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ./index.html || true
+          git diff --staged --quiet || git commit -m "Automated: update index.html with new YouTube watch URL"
+          # Push using token-authenticated remote
+          origin_url=$(git remote get-url origin)
+          if [[ "$origin_url" == git@* ]]; then
+            origin_url=${origin_url/git@/https://}
+            origin_url=${origin_url/:/\//}
+          fi
+          # embed token (do not echo)
+          remote_with_token=${origin_url/https:\/\//https://${GITHUB_TOKEN}@}
+          branch=${GITHUB_REF_NAME:-${GITHUB_REF##*/}}
+          git push "$remote_with_token" "HEAD:refs/heads/${branch}"
